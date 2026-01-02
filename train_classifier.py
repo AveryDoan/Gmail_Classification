@@ -1,6 +1,11 @@
+import os
+# Force transformers to use PyTorch and avoid heavy TensorFlow imports
+os.environ["USE_TORCH"] = "1"
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+
 from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
-import os
+import torch
 
 def prepare_and_train(csv_path, output_dir, num_labels=4):
     if not os.path.exists(csv_path):
@@ -34,7 +39,8 @@ def prepare_and_train(csv_path, output_dir, num_labels=4):
         per_device_train_batch_size=16,
         num_train_epochs=3,
         weight_decay=0.01,
-        logging_dir=f"./logs/{os.path.basename(output_dir)}"
+        logging_dir=f"./logs/{os.path.basename(output_dir)}",
+        use_mps_device=torch.backends.mps.is_available()
     )
 
     trainer = Trainer(
