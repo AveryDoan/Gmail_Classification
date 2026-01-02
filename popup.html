@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gmail-Cleaner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <span class="icon">✨</span>
+        <h1>CleanFlow</h1>
+      </div>
+      <button id="settings-btn" class="icon-btn">⚙️</button>
+    </header>
+
+    <main>
+      <section id="summary-section">
+        <div class="stat-card">
+          <div class="stat-value" id="emails-analyzed">0</div>
+          <div class="stat-label">Emails Analyzed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="senders-grouped">0</div>
+          <div class="stat-label">Senders Grouped</div>
+        </div>
+      </section>
+
+      <section id="classification-section">
+        <h2>Recent Senders</h2>
+        <div id="sender-list" class="sender-list">
+          <div class="empty-state">
+            <p>Open Gmail to start cleaning</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <button id="scan-btn" class="primary-btn">Scan Inbox</button>
+      <button id="dashboard-btn" class="secondary-btn">Open Dashboard</button>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+
+</html>

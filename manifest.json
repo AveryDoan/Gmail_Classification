@@ -1,0 +1,34 @@
+{
+    "manifest_version": 3,
+    "name": "Gmail-Cleaner",
+    "version": "1.0",
+    "description": "Intelligent, privacy-first Gmail classification and management.",
+    "permissions": [
+        "storage",
+        "unlimitedStorage",
+        "scripting"
+    ],
+    "host_permissions": [
+        "https://mail.google.com/*"
+    ],
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "background": {
+        "service_worker": "background.js",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://mail.google.com/*"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "css": [
+                "content.css"
+            ]
+        }
+    ]
+}
