@@ -85,21 +85,25 @@ async function updateStatsSequentially() {
     if (isUpdatingStats || statsQueue.length === 0) return;
     isUpdatingStats = true;
 
-    const incrementData = statsQueue.shift();
-    const result = await chrome.storage.local.get(['stats']);
-    const stats = result.stats || { emailsAnalyzed: 0, sendersGrouped: 0 };
+    try {
+        const incrementData = statsQueue.shift();
+        const result = await chrome.storage.local.get(['stats']);
+        const stats = result.stats || { emailsAnalyzed: 0, sendersGrouped: 0 };
 
-    stats.emailsAnalyzed++;
-    if (incrementData.isNewSender) {
-        stats.sendersGrouped++;
+        stats.emailsAnalyzed++;
+        if (incrementData.isNewSender) {
+            stats.sendersGrouped++;
+        }
+
+        await chrome.storage.local.set({ stats });
+        console.log('Gmail-Cleaner: Stats updated, total analyzed:', stats.emailsAnalyzed);
+        chrome.runtime.sendMessage({ type: 'UPDATE_STATS', data: stats });
+    } catch (error) {
+        console.error('Gmail-Cleaner: Error updating stats:', error);
+    } finally {
+        isUpdatingStats = false;
+        updateStatsSequentially();
     }
-
-    await chrome.storage.local.set({ stats });
-    console.log('Gmail-Cleaner: Stats updated, total analyzed:', stats.emailsAnalyzed);
-    chrome.runtime.sendMessage({ type: 'UPDATE_STATS', data: stats });
-
-    isUpdatingStats = false;
-    updateStatsSequentially();
 }
 
 async function handleEmailDetected(emailData) {
@@ -117,7 +121,7 @@ async function handleEmailDetected(emailData) {
             try {
                 console.log('Gmail-Cleaner: Fetching ML classification (with timeout)...');
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+                const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 second timeout for model loading
 
                 const response = await fetch('http://127.0.0.1:5001/classify', {
                     method: 'POST',

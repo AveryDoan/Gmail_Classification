@@ -84,11 +84,55 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.open('http://127.0.0.1:8050', '_blank');
     });
 
+    const downloadBtn = document.getElementById('download-btn');
+    downloadBtn.addEventListener('click', () => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            const activeTab = tabs[0];
+            if (activeTab && activeTab.url.includes('mail.google.com')) {
+                downloadBtn.textContent = 'Collecting...';
+                downloadBtn.disabled = true;
+
+                chrome.tabs.sendMessage(activeTab.id, { action: 'SCAN_INBOX' }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        downloadBtn.textContent = 'Failed';
+                        console.error(chrome.runtime.lastError);
+                    } else {
+                        downloadBtn.textContent = 'Transferring...';
+                    }
+
+                    setTimeout(() => {
+                        downloadBtn.textContent = 'Downloading...';
+                        window.open('http://127.0.0.1:5001/download', '_blank');
+
+                        setTimeout(() => {
+                            downloadBtn.textContent = 'Done!';
+                            setTimeout(() => {
+                                downloadBtn.textContent = 'Download Data';
+                                downloadBtn.disabled = false;
+                            }, 2000);
+                        }, 2000);
+                    }, 3000);
+                });
+            } else {
+                alert('Please open Gmail to download data.');
+            }
+        });
+    });
+
     scanBtn.addEventListener('click', () => {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             const activeTab = tabs[0];
             if (activeTab && activeTab.url.includes('mail.google.com')) {
+                scanBtn.classList.add('loading');
+                scanBtn.textContent = 'Scanning...';
+
                 chrome.tabs.sendMessage(activeTab.id, { action: 'SCAN_INBOX' });
+
+                // Reset button after 3 seconds or when done
+                setTimeout(() => {
+                    scanBtn.classList.remove('loading');
+                    scanBtn.textContent = 'Scan Inbox';
+                }, 3000);
             } else {
                 alert('Please open Gmail to scan your inbox.');
             }

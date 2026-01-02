@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify
-import torch
-from transformers import pipeline
+from flask import Flask, request, jsonify, send_file
 import re
+import csv
+import os
+from datetime import datetime
 
 # Data Model
 class Email:
@@ -26,49 +27,30 @@ class EmailWithLabels(Email):
 # Classifier Logic
 class ClassifierEngine:
     def __init__(self):
-        # Determine device (use MPS for Mac if available, otherwise CPU)
-        self.device = "mps" if torch.backends.mps.is_available() else "cpu"
-        print(f"Using device: {self.device}")
-        
-        try:
-            # Use faster models to prevent extension timeouts
-            self.purpose_classifier = pipeline("text-classification", 
-                                               model="distilbert-base-uncased-finetuned-sst-2-english",
-                                               device=self.device)
-            self.topic_classifier = pipeline("text-classification", 
-                                             model="distilbert-base-uncased",
-                                             device=self.device)
-            # Use a lighter zero-shot model
-            self.sender_classifier = pipeline("zero-shot-classification", 
-                                              model="valhalla/distilbart-mnli-12-1",
-                                              device=self.device)
-        except Exception as e:
-            print(f"Error loading models: {e}")
-            self.purpose_classifier = None
-            self.topic_classifier = None
-            self.sender_classifier = None
+        print("Classifier Engine initialized (Rule-based mode)")
 
     def classify_purpose(self, text):
-        if not self.purpose_classifier: return "personal", 0.5
-        result = self.purpose_classifier(text[:512])
-        return result[0]["label"].lower(), result[0]["score"]
+        text = text.lower()
+        if any(w in text for w in ["receipt", "invoice", "order", "bill", "payment", "stript", "paypal"]): return "finance", 0.95
+        if any(w in text for w in ["newsletter", "digest", "weekly", "edition", "substack", "medium"]): return "subscription", 0.9
+        if any(w in text for w in ["sale", "offer", "discount", "price", "limited time", "off"]): return "promotion", 0.85
+        if any(w in text for w in ["meeting", "agenda", "call", "project", "sync"]): return "work", 0.8
+        return "personal", 0.5
 
     def classify_topic(self, text):
-        if not self.topic_classifier: return "general", 0.5
-        result = self.topic_classifier(text[:512])
-        return result[0]["label"].lower(), result[0]["score"]
+        text = text.lower()
+        if any(w in text for w in ["finance", "bank", "crypto", "tax"]): return "finance", 0.9
+        if any(w in text for w in ["tech", "ai", "software", "code", "github", "stack"]): return "tech", 0.9
+        if any(w in text for w in ["shopping", "amazon", "ebay", "cart"]): return "shopping", 0.8
+        if any(w in text for w in ["travel", "flight", "hotel", "booking"]): return "travel", 0.8
+        return "general", 0.5
 
     def classify_sender_ml(self, sender_info):
-        if not self.sender_classifier: return "company"
-        candidate_labels = ["individual person", "automated platform", "commercial company", "government agency"]
-        result = self.sender_classifier(sender_info, candidate_labels)
-        label_map = {
-            "individual person": "individual",
-            "automated platform": "platform",
-            "commercial company": "company",
-            "government agency": "government"
-        }
-        return label_map.get(result["labels"][0], "company")
+        sender_info = sender_info.lower()
+        # platform detection
+        if any(w in sender_info for w in ["no-reply", "noreply", "notification", "alert"]): return "platform"
+        if ".com" in sender_info or ".org" in sender_info or ".io" in sender_info: return "company"
+        return "individual"
 
     def process_email(self, email_dict):
         email = Email(
@@ -88,22 +70,75 @@ class ClassifierEngine:
         sender_info = f"Sender: {email.sender}, Domain: {email.sender_domain}, Subject: {email.subject}"
         sender_type = self.classify_sender_ml(sender_info)
         
-        return {
+        result = {
             "purpose": purpose,
             "topic": topic,
             "sender_type": sender_type,
             "confidence": float(p_conf)
         }
+        
+        self.save_to_csv(email_dict, result)
+        return result
+
+    def save_to_csv(self, email_dict, result):
+        filename = "emails_classified.csv"
+        file_exists = os.path.isfile(filename)
+        
+        # Deduplication check
+        if file_exists:
+            with open(filename, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get("sender name") == email_dict.get("sender") and row.get("subject") == email_dict.get("subject"):
+                        return # Already exists
+        
+        with open(filename, mode='a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=[
+                "date", "sender name", "purpose", "subject", "content", "topic", "sender_type", "confidence"
+            ])
+            if not file_exists:
+                writer.writeheader()
+            
+            writer.writerow({
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "sender name": email_dict.get("sender", "Unknown"),
+                "purpose": result["purpose"],
+                "subject": email_dict.get("subject", "No Subject"),
+                "content": email_dict.get("body", "No Content"),
+                "topic": result["topic"],
+                "sender_type": result["sender_type"],
+                "confidence": f"{result['confidence']:.2f}"
+            })
+        print(f"Logged classification for {email_dict.get('sender')} to {filename}")
 
 # Flask API
 app = Flask(__name__)
 engine = ClassifierEngine()
 
-@app.route('/classify', methods=['POST'])
+@app.route('/classify', methods=['POST', 'OPTIONS'])
 def classify_route():
+    if request.method == 'OPTIONS':
+        return '', 204, {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type'
+        }
+    
     data = request.json
     result = engine.process_email(data)
-    return jsonify(result)
+    return jsonify(result), 200, {'Access-Control-Allow-Origin': '*'}
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "ok", "timestamp": datetime.now().isoformat()}), 200, {'Access-Control-Allow-Origin': '*'}
+
+@app.route('/download', methods=['GET'])
+def download_csv():
+    filename = "emails_classified.csv"
+    if os.path.isfile(filename):
+        return send_file(filename, as_attachment=True, download_name="gmail_data.csv")
+    else:
+        return jsonify({"error": "No data found"}), 404, {'Access-Control-Allow-Origin': '*'}
 
 if __name__ == "__main__":
     app.run(port=5001)

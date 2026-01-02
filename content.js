@@ -34,16 +34,18 @@ function detectEmails() {
     selectors.forEach(selector => {
         const found = document.querySelectorAll(selector);
         if (found.length > 0) {
-            console.log(`Gmail-Cleaner: Selector "${selector}" found ${found.length} items.`);
             emailRows = [...emailRows, ...found];
         }
     });
 
-    // De-duplicate rows
-    emailRows = [...new Set(emailRows)];
-    if (emailRows.length === 0) return;
+    // De-duplicate rows and filter out already processed ones
+    emailRows = [...new Set(emailRows)].filter(row =>
+        !row.hasAttribute('data-cleanflow-processed') &&
+        !row.hasAttribute('data-cleanflow-processing')
+    );
 
-    console.log(`Gmail-Cleaner: Processing ${emailRows.length} unique rows.`);
+    if (emailRows.length === 0) return;
+    console.log(`Gmail-Cleaner: Processing ${emailRows.length} new/pending rows.`);
 
     emailRows.forEach((row, index) => {
         // Try multiple selectors for sender cells
@@ -64,6 +66,7 @@ function detectEmails() {
 
             const senderText = senderCell.innerText.trim() || senderCell.getAttribute('email') || senderCell.getAttribute('data-hovercard-id') || 'Unknown';
             const subjectText = (row.querySelector('.y6')?.innerText || row.querySelector('.bog')?.innerText || '').trim();
+            const contentText = (row.querySelector('.y2')?.innerText || '').trim();
 
             console.log(`Gmail-Cleaner: Analyzing email from "${senderText}"`);
 
@@ -72,7 +75,7 @@ function detectEmails() {
                 data: {
                     sender: senderText,
                     subject: subjectText,
-                    body: '',
+                    body: contentText,
                     headers: {}
                 }
             }, (response) => {
@@ -134,8 +137,13 @@ window.cleanFlowDiagnostic = () => {
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'SCAN_INBOX') {
-        console.log('Scanning inbox...');
+        console.log('Gmail-Cleaner: Full scan requested, clearing processed flags...');
+        // Clear flags to allow re-scanning for download
+        document.querySelectorAll('[data-cleanflow-processed]').forEach(el => {
+            el.removeAttribute('data-cleanflow-processed');
+        });
         detectEmails();
+        sendResponse({ status: 'Scan started' });
     }
 
     if (request.action === 'FILTER_INBOX') {

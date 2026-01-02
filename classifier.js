@@ -3,7 +3,7 @@
 export const CLASSIFICATION_TYPES = {
     PERSONAL: 'Personal',
     WORK: 'Work',
-    TRANSACTIONAL: 'Transactional',
+    FINANCE: 'Finance',
     SUBSCRIPTION: 'Subscription',
     PROMOTION: 'Promotion',
     SPAM: 'Spam'
@@ -11,15 +11,15 @@ export const CLASSIFICATION_TYPES = {
 
 const RULES = {
     DOMAIN_MAP: {
-        'amazon.com': CLASSIFICATION_TYPES.TRANSACTIONAL,
-        'stripe.com': CLASSIFICATION_TYPES.TRANSACTIONAL,
-        'paypal.com': CLASSIFICATION_TYPES.TRANSACTIONAL,
+        'amazon.com': CLASSIFICATION_TYPES.FINANCE,
+        'stripe.com': CLASSIFICATION_TYPES.FINANCE,
+        'paypal.com': CLASSIFICATION_TYPES.FINANCE,
         'substack.com': CLASSIFICATION_TYPES.SUBSCRIPTION,
         'medium.com': CLASSIFICATION_TYPES.SUBSCRIPTION,
         'linkedin.com': CLASSIFICATION_TYPES.PROMOTION,
         'facebookmail.com': CLASSIFICATION_TYPES.PROMOTION,
         'twitter.com': CLASSIFICATION_TYPES.PROMOTION,
-        'no-reply@': CLASSIFICATION_TYPES.TRANSACTIONAL // Partial match handle
+        'no-reply@': CLASSIFICATION_TYPES.FINANCE // Partial match handle
     },
     HEADER_SIGNALS: {
         LIST_UNSUBSCRIBE: 'List-Unsubscribe',
@@ -28,7 +28,7 @@ const RULES = {
         X_CAMPAIGN: 'X-Campaign-ID'
     },
     KEYWORDS: {
-        TRANSACTIONAL: ['receipt', 'invoice', 'order', 'receipt', 'confirmation', 'otp', 'bill', 'statement'],
+        FINANCE: ['receipt', 'invoice', 'order', 'receipt', 'confirmation', 'otp', 'bill', 'statement'],
         PROMOTION: ['sale', 'discount', 'off', 'limited time', 'price', 'deal', 'offer', 'exclusive'],
         SUBSCRIPTION: ['newsletter', 'weekly', 'digest', 'edition', 'update', 'monthly']
     }
@@ -43,7 +43,7 @@ function extractFeatures(emailData) {
         isHtml: body.includes('<') && body.includes('>'),
         length: content.length,
         hasPromoKeywords: RULES.KEYWORDS.PROMOTION.some(kw => content.includes(kw)),
-        hasTransactionalKeywords: RULES.KEYWORDS.TRANSACTIONAL.some(kw => content.includes(kw))
+        hasFinanceKeywords: RULES.KEYWORDS.FINANCE.some(kw => content.includes(kw))
     };
 }
 
@@ -58,7 +58,7 @@ export function classify(emailData) {
     // 2. ML-inspired Probabilistic Scoring (Phase 2)
     const features = extractFeatures(emailData);
     let probabilities = {
-        TRANSACTIONAL: 0.1,
+        FINANCE: 0.1,
         PROMOTION: 0.1,
         SUBSCRIPTION: 0.1,
         PERSONAL: 0.7 // Default prior
@@ -71,7 +71,7 @@ export function classify(emailData) {
         probabilities.PERSONAL -= 0.3;
     }
     if (features.hasPromoKeywords) probabilities.PROMOTION += 0.5;
-    if (features.hasTransactionalKeywords) probabilities.TRANSACTIONAL += 0.5;
+    if (features.hasFinanceKeywords) probabilities.FINANCE += 0.5;
     if (features.length > 500) probabilities.SUBSCRIPTION += 0.2; // Newsletters are usually long
 
     // Find max probability

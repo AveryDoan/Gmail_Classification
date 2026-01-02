@@ -26,6 +26,7 @@ wheels/
 *.bin
 *.h5
 *.joblib
+*.csv
 ml_models/
 data/
 
