@@ -2,7 +2,7 @@
 
 Gmail-Cleaner (CleanFlow) is a privacy-first Chrome extension that brings advanced Machine Learning (ML) classification and interactive Business Intelligence (BI) analytics to your Gmail inbox. It helps you understand your email patterns, identify senders, and manage your inbox with data-driven insights.
 
-## ✨ Key Features
+## Key Features
 
 - **AI Classification**: Real-time analysis of emails using DistilBERT and Zero-Shot models (distilbart) to categorize purpose, topic, and sender type.
 - **Interactive Dashboard**: A powerful BI dashboard powered by Dash and Plotly to visualize your email ecosystem.
@@ -12,7 +12,7 @@ Gmail-Cleaner (CleanFlow) is a privacy-first Chrome extension that brings advanc
 - **Hardware Optimized**: Native support for Apple Silicon (MPS acceleration) for high-performance ML processing locally.
 - **Privacy First**: All data is stored locally in IndexedDB; classification happens on your local machine via a Python Flask API.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Prerequisites
 - Python 3.8+
@@ -40,14 +40,14 @@ View the analytics at `http://127.0.0.1:8050`.
 2. Enable **Developer mode**.
 3. Click **Load unpacked** and select the Gmail-Cleaner project directory.
 
-## 🛠 Tech Stack
+## Tech Stack
 
 - **Frontend**: Vanilla JS, CSS (Chrome Extension)
 - **Backend AI**: Python, Flask, HuggingFace Transformers (PyTorch)
 - **Analytics**: Dash, Plotly, Pandas
 - **Storage**: IndexedDB (Browser), Local Storage
 
-## 📊 Interaction Model
+## Interaction Model
 
 1. **Detection**: The extension monitors your Gmail DOM and detects email rows.
 2. **Analysis**: Row metadata is sent to the local Flask API for ML classification.
@@ -55,7 +55,7 @@ View the analytics at `http://127.0.0.1:8050`.
 4. **BI Dashboard**: Aggregated data is sent to the Dash server for interactive visualization.
 5. **Action**: Double-click senders in the popup to filter your inbox or use the "Open Dashboard" button for deep insights.
 
-## 🔒 Privacy
+## Privacy
 
 Gmail-Cleaner is designed with privacy as the core principle. No email content ever leaves your machine. The classification happens locally via your own Python environment, and all historical data is kept in your browser's private IndexedDB storage.
 
